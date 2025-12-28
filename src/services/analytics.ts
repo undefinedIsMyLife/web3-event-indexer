@@ -65,3 +65,74 @@ export async function getTopReceivers(contractId: number, limit = 10) {
     take: limit,
   });
 }
+// Retrieves daily transfer volume for the past specified number of days
+export async function getDailyVolume(
+  contractId: number,
+  days: number = 7
+) {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  const events = await prisma.event.findMany({
+    where: {
+      contractId,
+      eventName: "Transfer",
+      createdAt: {
+        gte: since,
+      },
+    },
+    select: {
+      value: true,
+      createdAt: true,
+    },
+  });
+
+  const dailyMap: Record<string, bigint> = {};
+
+    for (const event of events) {
+        const day = event.createdAt.toISOString().slice(0, 10);
+
+        const value = BigInt(event.value?.toString() ?? "0");
+
+        dailyMap[day] = (dailyMap[day] ?? 0n) + value;
+    }
+
+
+  return Object.entries(dailyMap).map(([date, volume]) => ({
+    date,
+    volume: volume.toString(),
+  }));
+}
+// Retrieves daily transfer volume for the past specified number of days
+export async function getDailyTransferCount(
+  contractId: number,
+  days: number = 7
+) {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  const events = await prisma.event.findMany({
+    where: {
+      contractId,
+      eventName: "Transfer",
+      createdAt: {
+        gte: since,
+      },
+    },
+    select: {
+      createdAt: true,
+    },
+  });
+
+  const dailyCount: Record<string, number> = {};
+
+  for (const event of events) {
+    const day = event.createdAt.toISOString().slice(0, 10);
+    dailyCount[day] = (dailyCount[day] ?? 0) + 1;
+  }
+
+  return Object.entries(dailyCount).map(([date, count]) => ({
+    date,
+    count,
+  }));
+}
