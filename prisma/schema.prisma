@@ -1,0 +1,58 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model Block {
+  id          Int      @id @default(autoincrement())
+  blockNumber Int      @unique
+  blockHash   String
+  timestamp   DateTime
+
+  createdAt   DateTime @default(now())
+}
+
+model Contract {
+  id        Int      @id @default(autoincrement())
+  address   String   @unique
+  chainId   Int
+  name      String?
+  events    Event[]  
+  createdAt DateTime @default(now())
+}
+
+model Event {
+  id           Int      @id @default(autoincrement())
+
+  contractId   Int
+  contract     Contract @relation(fields: [contractId], references: [id])
+
+  blockNumber  Int
+  blockHash    String
+  txHash       String
+  logIndex     Int
+
+  eventName    String
+
+  fromAddress  String?
+  toAddress    String?
+  value        Decimal?
+
+  createdAt    DateTime @default(now())
+
+  @@unique([txHash, logIndex])
+  @@index([blockNumber])
+  @@index([fromAddress])
+  @@index([toAddress])
+}
