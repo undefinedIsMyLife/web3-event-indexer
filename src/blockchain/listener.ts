@@ -1,8 +1,8 @@
-import { ethers } from "ethers";
+import { ethers, Log } from "ethers";
 import { saveTransferEvent } from "../services/indexer";
 
 const ERC20_ABI = [
-  "event Transfer(address indexed from, address indexed to, uint256 value)"
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
 ];
 
 export function startTransferListener(
@@ -11,48 +11,43 @@ export function startTransferListener(
   contractId: number
 ) {
   const provider = new ethers.JsonRpcProvider(rpcUrl);
+  const iface = new ethers.Interface(ERC20_ABI);
 
-  const contract = new ethers.Contract(
-    contractAddress,
-    ERC20_ABI,
-    provider
-  );
+  // ✅ Guaranteed because ABI is static
+  const transferEvent = iface.getEvent("Transfer")!;
+  const transferTopic = transferEvent.topicHash;
 
-  contract.on("Transfer", async (from, to, value, event) => {
+  const filter = {
+    address: contractAddress,
+    topics: [transferTopic],
+  };
+
+  console.log(`Listening for Transfer events on ${contractAddress}`);
+
+  provider.on(filter, async (log: Log) => {
     try {
-      const log = event.log;
+      const parsed = iface.parseLog(log);
+      if (!parsed) return;
 
-      if (!log) {
-        console.warn("Missing log data, skipping event");
-        return;
-      }
+      const from = parsed.args.from as string;
+      const to = parsed.args.to as string;
+      const value = parsed.args.value as bigint;
 
       await saveTransferEvent({
         contractId,
-        blockNumber: log.blockNumber,
-        blockHash: log.blockHash,
-        txHash: log.transactionHash,
-        logIndex: log.index,
-        from,
-        to,
+        tokenId: 1,
+        blockNumber: log.blockNumber!,
+        blockHash: log.blockHash!,
+        txHash: log.transactionHash!,
+        logIndex: log.index!, // ✅ v6 field
+        from: from.toLowerCase(),
+        to: to.toLowerCase(),
         value: value.toString(),
       });
 
-      console.log(`Transfer indexed: ${log.transactionHash}`);
+      console.log("✅ Indexed tx:", log.transactionHash);
     } catch (err) {
-      console.error("Indexing error:", err);
+      console.error("❌ Indexing error:", err);
     }
   });
-
 }
-
-
-/* Connects to Ethereum via RPC
-
-Subscribes to Transfer events
-
-Decodes event parameters
-
-Passes structured data to DB layer
-
-Handles errors safely*/
