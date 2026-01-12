@@ -1,44 +1,47 @@
 import { Request, Response } from "express";
 import {
   getTransferStats,
-  getTopSenders,
-  getTopReceivers,
   getDailyVolume,
   getDailyTransferCount,
+  getTopSenders,
+  getTopReceivers,
 } from "../services/analytics";
 
-const CONTRACT_ID = 1; // temporary (we'll improve later)
+export async function getTransferAnalytics(
+  req: Request,
+  res: Response
+) {
+  try {
+    const contractId = Number(req.params.contractId);
 
-export async function getOverview(req: Request, res: Response) {
-  const stats = await getTransferStats(CONTRACT_ID);
-  res.json(stats);
-}
+    if (isNaN(contractId)) {
+      return res.status(400).json({ error: "Invalid contractId" });
+    }
 
-export async function getTopAddresses(req: Request, res: Response) {
-  const limit = Number(req.query.limit) || 10;
+    const [
+      stats,
+      dailyVolume,
+      dailyCount,
+      topSenders,
+      topReceivers,
+    ] = await Promise.all([
+      getTransferStats(contractId),
+      getDailyVolume(contractId, ),
+      getDailyTransferCount(contractId, 30),
+      getTopSenders(contractId),
+      getTopReceivers(contractId),
+    ]);
 
-  const [senders, receivers] = await Promise.all([
-    getTopSenders(CONTRACT_ID, limit),
-    getTopReceivers(CONTRACT_ID, limit),
-  ]);
-
-  res.json({
-    topSenders: senders,
-    topReceivers: receivers,
-  });
-}
-// Time series data for transfers and volume over the past N days
-export async function getTimeSeries(req: Request, res: Response) {
-  const days = Number(req.query.days) || 7;
-  const CONTRACT_ID = 1;
-
-  const [volume, transfers] = await Promise.all([
-    getDailyVolume(CONTRACT_ID, days),
-    getDailyTransferCount(CONTRACT_ID, days),
-  ]);
-
-  res.json({
-    volume,
-    transfers,
-  });
+    res.json({
+      contractId,
+      stats,
+      dailyVolume,
+      dailyCount,
+      topSenders,
+      topReceivers,
+    });
+  } catch (err) {
+    console.error("Analytics error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 }

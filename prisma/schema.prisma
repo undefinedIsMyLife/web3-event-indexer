@@ -37,6 +37,9 @@ model Event {
 
   contractId   Int
   contract     Contract @relation(fields: [contractId], references: [id])
+  
+  tokenId      Int?
+  token        Token?   @relation(fields: [tokenId], references: [id])
 
   blockNumber  Int
   blockHash    String
@@ -55,4 +58,15 @@ model Event {
   @@index([blockNumber])
   @@index([fromAddress])
   @@index([toAddress])
+}
+
+model Token {
+  id        Int     @id @default(autoincrement())
+  address   String  @unique
+  symbol    String
+  decimals  Int
+
+  createdAt DateTime @default(now())
+
+  events    Event[]
 }
