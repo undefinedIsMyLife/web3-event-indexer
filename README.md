@@ -171,22 +171,6 @@ This architecture supports **any event type**, not just ERC-20.
 
 ---
 
-## 🧠 Why This Project
-
-This repository demonstrates:
-
-* Real blockchain indexing
-* Correct financial math
-* Backend analytics design
-* Production-safe data handling
-
-Ideal for:
-
-* Web3 backend roles
-* Open-source contributions
-* Interview discussions
-
----
 
 ## 📄 License
 
